@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from models import AdConfig, StoryRequest
 from services.publisher import TikTokPublisher, YouTubePublisher
 from services.story_video import StoryVideoBuilder
+from services.youtube_trend import YouTubeTrendProvider
 
 
 @dataclass
@@ -27,9 +28,24 @@ class AutoPilot:
         output_video: str,
         platforms: list[str],
         ad: AdConfig,
+        use_trends: bool = False,
     ) -> AutoPilotResult:
+        effective_request = story_request
+
+        if use_trends and not story_request.topic.strip():
+            provider = YouTubeTrendProvider()
+            trends = await provider.most_popular(max_results=10)
+            if not trends:
+                raise RuntimeError("Trend radar returned no topics")
+            effective_request = story_request.model_copy(
+                update={"topic": trends[0].topic}
+            )
+
+        if not effective_request.topic.strip():
+            raise ValueError("Topic is empty. Provide a topic or enable use_trends.")
+
         video = await self.video_builder.build(
-            story_request,
+            effective_request,
             output_video,
             ad,
         )
@@ -57,6 +73,6 @@ class AutoPilot:
             publications.append(result.__dict__)
 
         return AutoPilotResult(
-            video=video,
+            video={**video, "topic": effective_request.topic},
             publications=publications,
         )
