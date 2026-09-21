@@ -9,13 +9,23 @@ class Settings:
     host: str = os.getenv("APP_HOST", "0.0.0.0")
     port: int = int(os.getenv("APP_PORT", "8000"))
     data_dir: Path = Path(os.getenv("DATA_DIR", "./data"))
+
     llm_base_url: str = os.getenv("LLM_BASE_URL", "https://api.openai.com/v1").rstrip("/")
     llm_api_key: str = os.getenv("LLM_API_KEY", "")
     llm_model: str = os.getenv("LLM_MODEL", "gpt-4o-mini")
+
+    video_base_url: str = os.getenv("VIDEO_BASE_URL", "https://api.openai.com/v1").rstrip("/")
+    video_api_key: str = os.getenv("VIDEO_API_KEY", "") or os.getenv("LLM_API_KEY", "")
+    video_model: str = os.getenv("VIDEO_MODEL", "sora-2")
+    video_size: str = os.getenv("VIDEO_SIZE", "720x1280")
+    video_seconds: int = int(os.getenv("VIDEO_SECONDS", "8"))
+
     ffmpeg_bin: str = os.getenv("FFMPEG_BIN", "ffmpeg")
+
     youtube_client_id: str = os.getenv("YOUTUBE_CLIENT_ID", "")
     youtube_client_secret: str = os.getenv("YOUTUBE_CLIENT_SECRET", "")
     youtube_redirect_uri: str = os.getenv("YOUTUBE_REDIRECT_URI", "http://127.0.0.1:8000/api/auth/youtube/callback")
+
     tiktok_client_key: str = os.getenv("TIKTOK_CLIENT_KEY", "")
     tiktok_client_secret: str = os.getenv("TIKTOK_CLIENT_SECRET", "")
     tiktok_redirect_uri: str = os.getenv("TIKTOK_REDIRECT_URI", "http://127.0.0.1:8000/api/auth/tiktok/callback")
