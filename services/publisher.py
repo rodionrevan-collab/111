@@ -71,6 +71,14 @@ class YouTubePublisher(Publisher):
                 "containsSyntheticMedia": bool(ai_generated),
             },
         }
+        if paid_promotion:
+            metadata["paidProductPlacementDetails"] = {
+                "hasPaidProductPlacement": True,
+            }
+
+        parts = "snippet,status"
+        if paid_promotion:
+            parts += ",paidProductPlacementDetails"
 
         headers = {
             "Authorization": f"Bearer {settings.youtube_access_token}",
@@ -82,7 +90,7 @@ class YouTubePublisher(Publisher):
         async with httpx.AsyncClient(timeout=180) as client:
             response = await client.post(
                 "https://www.googleapis.com/upload/youtube/v3/videos",
-                params={"uploadType": "resumable", "part": "snippet,status"},
+                params={"uploadType": "resumable", "part": parts},
                 headers=headers,
                 json=metadata,
             )
@@ -105,11 +113,10 @@ class YouTubePublisher(Publisher):
             upload_response.raise_for_status()
             data = upload_response.json()
 
-        video_id = data.get("id")
         return PublishResult(
             platform=self.platform,
             status="published",
-            remote_id=video_id,
+            remote_id=data.get("id"),
             message="Uploaded with YouTube Data API.",
         )
 
