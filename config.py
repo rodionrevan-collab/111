@@ -20,6 +20,12 @@ class Settings:
     video_size: str = os.getenv("VIDEO_SIZE", "720x1280")
     video_seconds: int = int(os.getenv("VIDEO_SECONDS", "8"))
 
+    audio_base_url: str = os.getenv("AUDIO_BASE_URL", "https://api.openai.com/v1").rstrip("/")
+    audio_api_key: str = os.getenv("AUDIO_API_KEY", "") or os.getenv("LLM_API_KEY", "")
+    tts_model: str = os.getenv("TTS_MODEL", "gpt-4o-mini-tts")
+    tts_voice: str = os.getenv("TTS_VOICE", "alloy")
+    tts_speed: float = float(os.getenv("TTS_SPEED", "1.0"))
+
     ffmpeg_bin: str = os.getenv("FFMPEG_BIN", "ffmpeg")
 
     youtube_api_key: str = os.getenv("YOUTUBE_API_KEY", "")
