@@ -17,17 +17,23 @@ pre{white-space:pre-wrap;word-break:break-word}
 .primary{font-size:18px;padding:12px 18px}
 .checks{display:flex;gap:18px;flex-wrap:wrap;margin:8px 0 18px}
 .checks label{white-space:nowrap}
+.inline{display:flex;gap:10px;align-items:center;margin:8px 0 14px}
+.inline input{width:auto;margin:0}
 </style>
 </head>
 <body>
 <h1>AI Story Factory</h1>
-<p>AI stories → vertical video → sponsor ad → YouTube Shorts / TikTok.</p>
+<p>AI stories → vertical video → voice → sponsor ad → YouTube Shorts / TikTok.</p>
 
 <div class="grid">
 <section class="card">
 <h2>1. Story</h2>
 <label>Topic</label>
-<input id="topic" value="a strange event on a train">
+<input id="topic" value="a strange event on a train" placeholder="Leave empty when Trend Radar is enabled">
+<div class="inline">
+<input id="useTrends" type="checkbox">
+<label for="useTrends">Use current YouTube trend automatically</label>
+</div>
 <label>Language</label>
 <input id="language" value="en">
 <label>Length</label>
@@ -77,7 +83,7 @@ pre{white-space:pre-wrap;word-break:break-word}
 <input id="output" value="data/renders/story.mp4">
 
 <button class="primary" onclick="runAutopilot()">RUN AUTOPILOT</button>
-<p class="small">Creates the story, generates AI video scenes, adds the selected ad, then submits the result to the selected platforms. API credentials are required for actual publishing.</p>
+<p class="small">Flow: trend/topic → story → AI video scenes → voice → ad → platform publishing. Credentials are required for real AI generation and publishing.</p>
 <pre id="autopilot"></pre>
 </section>
 
@@ -88,7 +94,13 @@ pre{white-space:pre-wrap;word-break:break-word}
 </section>
 
 <section class="card">
-<h2>System status</h2>
+<h2>5. Trend Radar</h2>
+<button onclick="loadTrends()">Load YouTube trends</button>
+<pre id="trends"></pre>
+</section>
+
+<section class="card">
+<h2>6. System status</h2>
 <button onclick="loadStatus()">Refresh</button>
 <pre id="status"></pre>
 </section>
@@ -183,7 +195,8 @@ async function runAutopilot(){
     story:storyPayload(),
     output_video:document.getElementById('output').value,
     platforms:platforms,
-    ad:ad
+    ad:ad,
+    use_trends:document.getElementById('useTrends').checked
   };
 
   document.getElementById('autopilot').textContent='AUTOPILOT RUNNING...';
@@ -193,6 +206,12 @@ async function runAutopilot(){
     body:JSON.stringify(body)
   });
   document.getElementById('autopilot').textContent=JSON.stringify(await r.json(),null,2);
+}
+
+async function loadTrends(){
+  document.getElementById('trends').textContent='Loading...';
+  const r=await fetch('/api/trends/youtube?max_results=20');
+  document.getElementById('trends').textContent=JSON.stringify(await r.json(),null,2);
 }
 
 async function loadStatus(){
