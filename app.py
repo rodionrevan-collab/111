@@ -11,13 +11,14 @@ from config import settings
 from models import AdConfig, RenderRequest, StoryRequest
 from services.ad_campaigns import AdCampaignManager, Campaign
 from services.ad_engine import create_corner_banner
+from services.autopilot import AutoPilot
 from services.publisher import TikTokPublisher, YouTubePublisher
 from services.queue import JobQueue
 from services.story_engine import generate_story
 from services.story_video import StoryVideoBuilder
 from services.video_renderer import VideoRenderer
 
-app = FastAPI(title=settings.app_name, version="0.4.0")
+app = FastAPI(title=settings.app_name, version="0.5.0")
 
 static_dir = Path("static")
 static_dir.mkdir(exist_ok=True)
@@ -27,6 +28,7 @@ queue = JobQueue(settings.jobs_db)
 renderer = VideoRenderer()
 campaigns = AdCampaignManager(settings.data_dir / "campaigns.json")
 story_video_builder = StoryVideoBuilder()
+autopilot = AutoPilot()
 youtube_publisher = YouTubePublisher()
 tiktok_publisher = TikTokPublisher()
 
@@ -54,6 +56,13 @@ class PublishRequest(BaseModel):
     paid_promotion: bool = False
 
 
+class AutopilotRequest(BaseModel):
+    story: StoryRequest
+    output_video: str = "data/renders/story.mp4"
+    platforms: list[str] = Field(default_factory=lambda: ["youtube", "tiktok"])
+    ad: AdConfig = Field(default_factory=AdConfig)
+
+
 @app.get("/")
 async def dashboard():
     return FileResponse(static_dir / "index.html")
@@ -61,7 +70,7 @@ async def dashboard():
 
 @app.get("/api/health")
 async def health():
-    return {"ok": True, "app": settings.app_name, "version": "0.4.0"}
+    return {"ok": True, "app": settings.app_name, "version": "0.5.0"}
 
 
 @app.get("/api/jobs")
@@ -78,11 +87,24 @@ async def story(req: StoryRequest):
 @app.post("/api/generate/video-story")
 async def generate_video_story(req: StoryVideoRequest):
     try:
-        return await story_video_builder.build(
+        return await story_video_builder.build(req.story, req.output_video, req.ad)
+    except Exception as exc:
+        raise HTTPException(500, str(exc)) from exc
+
+
+@app.post("/api/autopilot")
+async def run_autopilot(req: AutopilotRequest):
+    try:
+        result = await autopilot.run(
             req.story,
             req.output_video,
+            req.platforms,
             req.ad,
         )
+        return {
+            "video": result.video,
+            "publications": result.publications,
+        }
     except Exception as exc:
         raise HTTPException(500, str(exc)) from exc
 
