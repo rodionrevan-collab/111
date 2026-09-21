@@ -13,9 +13,10 @@ from services.ad_campaigns import AdCampaignManager, Campaign
 from services.ad_engine import create_corner_banner
 from services.queue import JobQueue
 from services.story_engine import generate_story
+from services.story_video import StoryVideoBuilder
 from services.video_renderer import VideoRenderer
 
-app = FastAPI(title=settings.app_name, version="0.2.0")
+app = FastAPI(title=settings.app_name, version="0.3.0")
 
 static_dir = Path("static")
 static_dir.mkdir(exist_ok=True)
@@ -24,6 +25,7 @@ app.mount("/static", StaticFiles(directory=static_dir), name="static")
 queue = JobQueue(settings.jobs_db)
 renderer = VideoRenderer()
 campaigns = AdCampaignManager(settings.data_dir / "campaigns.json")
+story_video_builder = StoryVideoBuilder()
 
 
 class CampaignList(BaseModel):
@@ -35,6 +37,12 @@ class CampaignSelectRequest(BaseModel):
     story_seconds: int = Field(default=45, ge=1, le=600)
 
 
+class StoryVideoRequest(BaseModel):
+    story: StoryRequest
+    output_video: str = "data/renders/story.mp4"
+    ad: AdConfig = Field(default_factory=AdConfig)
+
+
 @app.get("/")
 async def dashboard():
     return FileResponse(static_dir / "index.html")
@@ -42,7 +50,7 @@ async def dashboard():
 
 @app.get("/api/health")
 async def health():
-    return {"ok": True, "app": settings.app_name, "version": "0.2.0"}
+    return {"ok": True, "app": settings.app_name, "version": "0.3.0"}
 
 
 @app.get("/api/jobs")
@@ -54,6 +62,19 @@ async def jobs():
 async def story(req: StoryRequest):
     result = await generate_story(req)
     return result.model_dump()
+
+
+@app.post("/api/generate/video-story")
+async def generate_video_story(req: StoryVideoRequest):
+    try:
+        result = await story_video_builder.build(
+            req.story,
+            req.output_video,
+            req.ad,
+        )
+        return result
+    except Exception as exc:
+        raise HTTPException(500, str(exc)) from exc
 
 
 @app.post("/api/ad/banner")
@@ -121,4 +142,5 @@ async def queue_render(req: RenderRequest):
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run("app:app", host=settings.host, port=settings.port, reload=True)
