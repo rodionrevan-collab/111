@@ -18,7 +18,7 @@ from services.story_engine import generate_story
 from services.story_video import StoryVideoBuilder
 from services.video_renderer import VideoRenderer
 
-app = FastAPI(title=settings.app_name, version="0.5.0")
+app = FastAPI(title=settings.app_name, version="0.6.0")
 
 static_dir = Path("static")
 static_dir.mkdir(exist_ok=True)
@@ -61,6 +61,7 @@ class AutopilotRequest(BaseModel):
     output_video: str = "data/renders/story.mp4"
     platforms: list[str] = Field(default_factory=lambda: ["youtube", "tiktok"])
     ad: AdConfig = Field(default_factory=AdConfig)
+    use_trends: bool = False
 
 
 @app.get("/")
@@ -70,7 +71,7 @@ async def dashboard():
 
 @app.get("/api/health")
 async def health():
-    return {"ok": True, "app": settings.app_name, "version": "0.5.0"}
+    return {"ok": True, "app": settings.app_name, "version": "0.6.0"}
 
 
 @app.get("/api/jobs")
@@ -100,6 +101,7 @@ async def run_autopilot(req: AutopilotRequest):
             req.output_video,
             req.platforms,
             req.ad,
+            use_trends=req.use_trends,
         )
         return {
             "video": result.video,
@@ -138,6 +140,33 @@ async def select_campaign(req: CampaignSelectRequest):
         "campaign": campaign.__dict__,
         "ad_config": campaigns.to_ad_config(campaign).model_dump(),
     }
+
+
+@app.get("/api/trends/youtube")
+async def youtube_trends(max_results: int = 20):
+    try:
+        from services.youtube_trend import YouTubeTrendProvider
+        provider = YouTubeTrendProvider()
+        signals = await provider.most_popular(max_results=max_results)
+        return {"signals": [signal.__dict__ for signal in signals]}
+    except Exception as exc:
+        raise HTTPException(500, str(exc)) from exc
+
+
+@app.post("/api/analytics/youtube")
+async def youtube_analytics(
+    metrics: str = "views,likes,comments,averageViewDuration,averageViewPercentage",
+    video_ids: str = "",
+):
+    try:
+        from services.youtube_analytics import YouTubeAnalytics
+        analytics = YouTubeAnalytics()
+        ids = [item.strip() for item in video_ids.split(",") if item.strip()]
+        if ids:
+            return await analytics.video_report(ids)
+        return await analytics.query(metrics=metrics)
+    except Exception as exc:
+        raise HTTPException(500, str(exc)) from exc
 
 
 @app.post("/api/render")
