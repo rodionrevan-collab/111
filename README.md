@@ -1,47 +1,65 @@
 # AI Story Factory
 
-Universal automation platform for generating original AI story videos and preparing/publishing them to YouTube Shorts and TikTok.
+A self-hosted automation platform for creating original AI story videos, adding sponsor ads, and preparing/publishing vertical videos to YouTube Shorts and TikTok.
 
-## MVP
+## What works in the current MVP
 
-- AI story/script engine with OpenAI-compatible LLM support
-- Scene manifest generation
-- FFmpeg video rendering
-- Advertisement engine:
-  - corner_banner: small sponsor banner in a video corner
-  - in_stream: short sponsor clip inserted into the story
-- SQLite job queue
-- Provider interfaces for media generation and social publishing
-- Simple dashboard
-- Docker setup
+- AI story/script generation through an OpenAI-compatible LLM endpoint.
+- Scene-by-scene prompts for vertical stories.
+- AI video generation through the official video API adapter.
+- Automatic narration through the speech API adapter.
+- FFmpeg assembly into a vertical MP4.
+- Two ad modes:
+  - corner_banner: small sponsor banner in a corner.
+  - in_stream: short sponsor video inserted into the story.
+- Sponsor campaign storage and weighted campaign selection.
+- One-click AutoPilot pipeline:
+  topic/trend -> story -> AI scenes -> narration -> ad -> publishing.
+- YouTube publisher adapter.
+- TikTok Content Posting publisher adapter.
+- YouTube Trend Radar using the public mostPopular endpoint.
+- YouTube Analytics adapter.
+- SQLite job queue.
+- FastAPI dashboard.
+- Docker support.
+- CI syntax-check workflow.
+
+## Current platform notes
+
+YouTube and TikTok integrations use official APIs. OAuth/token setup is still a deployment step.
+
+TikTok has platform-specific rules around promotional overlays and public Direct Post access. The local renderer supports both ad modes, but a TikTok-specific sponsored-content variant may need to be used depending on the current platform rules and approved app configuration.
+
+AI-generated-content disclosure is carried through the publishing adapters where supported.
 
 ## Quick start
 
 1. Install Python 3.12+ and FFmpeg, or use Docker.
 2. Copy .env.example to .env.
-3. Run:
+3. Add the API keys you plan to use.
+4. Run:
 
 ~~~text
 pip install -r requirements.txt
 uvicorn app:app --reload
 ~~~
 
-Open http://127.0.0.1:8000
+Open http://127.0.0.1:8000.
 
-## AI
+## Main API endpoints
 
-Set LLM_BASE_URL, LLM_API_KEY and LLM_MODEL for real story generation. The story engine uses an OpenAI-compatible Chat Completions endpoint so the provider can be swapped later.
+- POST /api/generate/story
+- POST /api/generate/video-story
+- POST /api/autopilot
+- GET /api/trends/youtube
+- POST /api/analytics/youtube
+- POST /api/publish/youtube
+- POST /api/publish/tiktok
+- GET /api/campaigns
+- POST /api/campaigns
+- POST /api/render
 
-## Advertising
-
-The project has two first-class ad modes:
-
-1. corner_banner — small sponsor banner over the video.
-2. in_stream — short sponsor video inserted at a selected timestamp.
-
-The ad engine is isolated from platform publishers so platform-specific rules can be applied before publication.
-
-## Structure
+## Repository structure
 
 ~~~text
 app.py
@@ -49,12 +67,17 @@ config.py
 models.py
 services/
   story_engine.py
+  ai_video_provider.py
+  tts_provider.py
+  story_video.py
   ad_engine.py
+  ad_campaigns.py
   video_renderer.py
-  queue.py
-  trend_engine.py
-  media_provider.py
+  autopilot.py
+  youtube_trend.py
+  youtube_analytics.py
   publisher.py
+  queue.py
 static/
   index.html
 data/
@@ -62,17 +85,24 @@ data/
 requirements.txt
 Dockerfile
 docker-compose.yml
+THIRD_PARTY.md
+PLATFORM_SETUP.md
 ~~~
 
-## Roadmap
+## Third-party sources
 
-- Trend collection from public signals and official APIs
-- AI image/video generation providers
-- TTS/voice providers
-- Automatic scene generation and motion
-- YouTube OAuth + upload/scheduling
-- TikTok OAuth + Content Posting API
-- Analytics feedback loop
-- Content diversity/originality checks
-- Sponsor campaign manager
-- A/B variants
+The repository documents the open-source components we studied in THIRD_PARTY.md.
+
+We do not embed the AGPL Postiz code into the core. OpenShorts' separately licensed cloud/ directory is also not copied into this project.
+
+## Next development phase
+
+- Secure OAuth flows and token refresh instead of manual access-token environment variables.
+- Background workers and scheduled jobs.
+- Burned-in subtitles and word timing.
+- Platform-specific render variants.
+- TikTok-safe sponsored-content workflow.
+- More trend sources and trend freshness/velocity scoring.
+- Feedback loop that uses analytics to choose future story topics/formats.
+- Sponsor dashboard and campaign reporting.
+- Content diversity/originality checks before publication.
