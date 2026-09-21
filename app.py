@@ -11,12 +11,13 @@ from config import settings
 from models import AdConfig, RenderRequest, StoryRequest
 from services.ad_campaigns import AdCampaignManager, Campaign
 from services.ad_engine import create_corner_banner
+from services.publisher import TikTokPublisher, YouTubePublisher
 from services.queue import JobQueue
 from services.story_engine import generate_story
 from services.story_video import StoryVideoBuilder
 from services.video_renderer import VideoRenderer
 
-app = FastAPI(title=settings.app_name, version="0.3.0")
+app = FastAPI(title=settings.app_name, version="0.4.0")
 
 static_dir = Path("static")
 static_dir.mkdir(exist_ok=True)
@@ -26,6 +27,8 @@ queue = JobQueue(settings.jobs_db)
 renderer = VideoRenderer()
 campaigns = AdCampaignManager(settings.data_dir / "campaigns.json")
 story_video_builder = StoryVideoBuilder()
+youtube_publisher = YouTubePublisher()
+tiktok_publisher = TikTokPublisher()
 
 
 class CampaignList(BaseModel):
@@ -43,6 +46,14 @@ class StoryVideoRequest(BaseModel):
     ad: AdConfig = Field(default_factory=AdConfig)
 
 
+class PublishRequest(BaseModel):
+    video_path: str
+    title: str
+    description: str = ""
+    ai_generated: bool = True
+    paid_promotion: bool = False
+
+
 @app.get("/")
 async def dashboard():
     return FileResponse(static_dir / "index.html")
@@ -50,7 +61,7 @@ async def dashboard():
 
 @app.get("/api/health")
 async def health():
-    return {"ok": True, "app": settings.app_name, "version": "0.3.0"}
+    return {"ok": True, "app": settings.app_name, "version": "0.4.0"}
 
 
 @app.get("/api/jobs")
@@ -67,12 +78,11 @@ async def story(req: StoryRequest):
 @app.post("/api/generate/video-story")
 async def generate_video_story(req: StoryVideoRequest):
     try:
-        result = await story_video_builder.build(
+        return await story_video_builder.build(
             req.story,
             req.output_video,
             req.ad,
         )
-        return result
     except Exception as exc:
         raise HTTPException(500, str(exc)) from exc
 
@@ -138,6 +148,36 @@ async def render(req: RenderRequest):
 async def queue_render(req: RenderRequest):
     job_id = queue.add("render", req.model_dump())
     return {"job_id": job_id, "status": "queued"}
+
+
+@app.post("/api/publish/youtube")
+async def publish_youtube(req: PublishRequest):
+    try:
+        result = await youtube_publisher.publish(
+            req.video_path,
+            req.title,
+            req.description,
+            ai_generated=req.ai_generated,
+            paid_promotion=req.paid_promotion,
+        )
+        return result.__dict__
+    except Exception as exc:
+        raise HTTPException(500, str(exc)) from exc
+
+
+@app.post("/api/publish/tiktok")
+async def publish_tiktok(req: PublishRequest):
+    try:
+        result = await tiktok_publisher.publish(
+            req.video_path,
+            req.title,
+            req.description,
+            ai_generated=req.ai_generated,
+            paid_promotion=req.paid_promotion,
+        )
+        return result.__dict__
+    except Exception as exc:
+        raise HTTPException(500, str(exc)) from exc
 
 
 if __name__ == "__main__":
