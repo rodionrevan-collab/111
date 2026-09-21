@@ -14,11 +14,14 @@ pre{white-space:pre-wrap;word-break:break-word}
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
 @media(max-width:800px){.grid{grid-template-columns:1fr}}
 .small{opacity:.75;font-size:14px}
+.primary{font-size:18px;padding:12px 18px}
+.checks{display:flex;gap:18px;flex-wrap:wrap;margin:8px 0 18px}
+.checks label{white-space:nowrap}
 </style>
 </head>
 <body>
 <h1>AI Story Factory</h1>
-<p>AI stories → vertical video → sponsor ad → ready for YouTube Shorts / TikTok.</p>
+<p>AI stories → vertical video → sponsor ad → YouTube Shorts / TikTok.</p>
 
 <div class="grid">
 <section class="card">
@@ -31,7 +34,7 @@ pre{white-space:pre-wrap;word-break:break-word}
 <input id="seconds" type="number" value="45" min="15" max="180">
 <label>Tone</label>
 <input id="tone" value="mysterious">
-<button onclick="generateStory()">Generate story</button>
+<button onclick="generateStory()">Generate story preview</button>
 <pre id="story"></pre>
 </section>
 
@@ -63,11 +66,24 @@ pre{white-space:pre-wrap;word-break:break-word}
 </div>
 
 <section class="card">
-<h2>3. Generate complete AI video</h2>
+<h2>3. AutoPilot</h2>
+<label>Platforms</label>
+<div class="checks">
+<label><input id="youtube" type="checkbox" checked> YouTube Shorts</label>
+<label><input id="tiktok" type="checkbox" checked> TikTok</label>
+</div>
+
 <label>Output path</label>
 <input id="output" value="data/renders/story.mp4">
+
+<button class="primary" onclick="runAutopilot()">RUN AUTOPILOT</button>
+<p class="small">Creates the story, generates AI video scenes, adds the selected ad, then submits the result to the selected platforms. API credentials are required for actual publishing.</p>
+<pre id="autopilot"></pre>
+</section>
+
+<section class="card">
+<h2>4. Generate video only</h2>
 <button onclick="generateVideo()">Generate AI video + selected ad</button>
-<p class="small">This calls the configured AI video provider. Video generation can take time and may consume API credits.</p>
 <pre id="video"></pre>
 </section>
 
@@ -78,22 +94,36 @@ pre{white-space:pre-wrap;word-break:break-word}
 </section>
 
 <script>
+function storyPayload(){
+  return {
+    topic:document.getElementById('topic').value,
+    language:document.getElementById('language').value,
+    target_seconds:Number(document.getElementById('seconds').value),
+    tone:document.getElementById('tone').value
+  };
+}
+
+function adPayload(){
+  const mode=document.getElementById('adMode').value;
+  return {
+    mode:mode,
+    sponsor_name:document.getElementById('sponsor').value,
+    sponsor_text:document.getElementById('sponsorText').value,
+    ad_video_path:mode==='in_stream' ? document.getElementById('adVideo').value : null,
+    insert_at_seconds:mode==='in_stream' ? Number(document.getElementById('insertAt').value) : null
+  };
+}
+
 function toggleAdMode(){
   document.getElementById('clipFields').style.display =
     document.getElementById('adMode').value === 'in_stream' ? 'block' : 'none';
 }
 
 async function generateStory(){
-  const body={
-    topic:document.getElementById('topic').value,
-    language:document.getElementById('language').value,
-    target_seconds:Number(document.getElementById('seconds').value),
-    tone:document.getElementById('tone').value
-  };
   const r=await fetch('/api/generate/story',{
     method:'POST',
     headers:{'Content-Type':'application/json'},
-    body:JSON.stringify(body)
+    body:JSON.stringify(storyPayload())
   });
   document.getElementById('story').textContent=JSON.stringify(await r.json(),null,2);
 }
@@ -114,13 +144,7 @@ async function makeBanner(){
 
 async function generateVideo(){
   const mode=document.getElementById('adMode').value;
-  const ad={
-    mode:mode,
-    sponsor_name:document.getElementById('sponsor').value,
-    sponsor_text:document.getElementById('sponsorText').value,
-    ad_video_path:mode==='in_stream' ? document.getElementById('adVideo').value : null,
-    insert_at_seconds:mode==='in_stream' ? Number(document.getElementById('insertAt').value) : null
-  };
+  const ad=adPayload();
 
   if(mode==='corner_banner'){
     await makeBanner();
@@ -128,12 +152,7 @@ async function generateVideo(){
   }
 
   const body={
-    story:{
-      topic:document.getElementById('topic').value,
-      language:document.getElementById('language').value,
-      target_seconds:Number(document.getElementById('seconds').value),
-      tone:document.getElementById('tone').value
-    },
+    story:storyPayload(),
     output_video:document.getElementById('output').value,
     ad:ad
   };
@@ -145,6 +164,35 @@ async function generateVideo(){
     body:JSON.stringify(body)
   });
   document.getElementById('video').textContent=JSON.stringify(await r.json(),null,2);
+}
+
+async function runAutopilot(){
+  const mode=document.getElementById('adMode').value;
+  const ad=adPayload();
+
+  if(mode==='corner_banner'){
+    await makeBanner();
+    ad.banner_path='data/ads/generated_banner.png';
+  }
+
+  const platforms=[];
+  if(document.getElementById('youtube').checked) platforms.push('youtube');
+  if(document.getElementById('tiktok').checked) platforms.push('tiktok');
+
+  const body={
+    story:storyPayload(),
+    output_video:document.getElementById('output').value,
+    platforms:platforms,
+    ad:ad
+  };
+
+  document.getElementById('autopilot').textContent='AUTOPILOT RUNNING...';
+  const r=await fetch('/api/autopilot',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(body)
+  });
+  document.getElementById('autopilot').textContent=JSON.stringify(await r.json(),null,2);
 }
 
 async function loadStatus(){
