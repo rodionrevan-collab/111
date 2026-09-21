@@ -25,10 +25,16 @@ class Settings:
     youtube_client_id: str = os.getenv("YOUTUBE_CLIENT_ID", "")
     youtube_client_secret: str = os.getenv("YOUTUBE_CLIENT_SECRET", "")
     youtube_redirect_uri: str = os.getenv("YOUTUBE_REDIRECT_URI", "http://127.0.0.1:8000/api/auth/youtube/callback")
+    youtube_access_token: str = os.getenv("YOUTUBE_ACCESS_TOKEN", "")
+    youtube_privacy_status: str = os.getenv("YOUTUBE_PRIVACY_STATUS", "private")
+    youtube_category_id: str = os.getenv("YOUTUBE_CATEGORY_ID", "22")
 
     tiktok_client_key: str = os.getenv("TIKTOK_CLIENT_KEY", "")
     tiktok_client_secret: str = os.getenv("TIKTOK_CLIENT_SECRET", "")
     tiktok_redirect_uri: str = os.getenv("TIKTOK_REDIRECT_URI", "http://127.0.0.1:8000/api/auth/tiktok/callback")
+    tiktok_access_token: str = os.getenv("TIKTOK_ACCESS_TOKEN", "")
+    tiktok_privacy_level: str = os.getenv("TIKTOK_PRIVACY_LEVEL", "SELF_ONLY")
+    tiktok_chunk_size: int = int(os.getenv("TIKTOK_CHUNK_SIZE", "10000000"))
 
     @property
     def jobs_db(self) -> Path:
