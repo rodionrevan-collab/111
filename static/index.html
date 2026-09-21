@@ -13,20 +13,21 @@ button{cursor:pointer}
 pre{white-space:pre-wrap;word-break:break-word}
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
 @media(max-width:800px){.grid{grid-template-columns:1fr}}
+.small{opacity:.75;font-size:14px}
 </style>
 </head>
 <body>
 <h1>AI Story Factory</h1>
-<p>Original AI stories for vertical video, with sponsor banner or in-stream ad support.</p>
+<p>AI stories → vertical video → sponsor ad → ready for YouTube Shorts / TikTok.</p>
 
 <div class="grid">
 <section class="card">
-<h2>Story generator</h2>
+<h2>1. Story</h2>
 <label>Topic</label>
 <input id="topic" value="a strange event on a train">
 <label>Language</label>
 <input id="language" value="en">
-<label>Length (seconds)</label>
+<label>Length</label>
 <input id="seconds" type="number" value="45" min="15" max="180">
 <label>Tone</label>
 <input id="tone" value="mysterious">
@@ -35,16 +36,40 @@ pre{white-space:pre-wrap;word-break:break-word}
 </section>
 
 <section class="card">
-<h2>Advertisement</h2>
-<p>Modes: corner banner or in-stream sponsor clip.</p>
+<h2>2. Advertisement</h2>
+<label>Ad mode</label>
+<select id="adMode" onchange="toggleAdMode()">
+<option value="none">No ad</option>
+<option value="corner_banner">Small corner banner</option>
+<option value="in_stream">Short in-stream sponsor clip</option>
+</select>
+
 <label>Sponsor name</label>
 <input id="sponsor" value="Demo Sponsor">
+
 <label>Banner text</label>
 <input id="sponsorText" value="Learn more">
-<button onclick="makeBanner()">Create test banner</button>
+
+<div id="clipFields" style="display:none">
+<label>Ad video path</label>
+<input id="adVideo" placeholder="data/ads/demo-ad.mp4">
+<label>Insert at (seconds)</label>
+<input id="insertAt" type="number" value="8" min="0">
+</div>
+
+<button onclick="makeBanner()">Create banner asset</button>
 <pre id="ad"></pre>
 </section>
 </div>
+
+<section class="card">
+<h2>3. Generate complete AI video</h2>
+<label>Output path</label>
+<input id="output" value="data/renders/story.mp4">
+<button onclick="generateVideo()">Generate AI video + selected ad</button>
+<p class="small">This calls the configured AI video provider. Video generation can take time and may consume API credits.</p>
+<pre id="video"></pre>
+</section>
 
 <section class="card">
 <h2>System status</h2>
@@ -53,6 +78,11 @@ pre{white-space:pre-wrap;word-break:break-word}
 </section>
 
 <script>
+function toggleAdMode(){
+  document.getElementById('clipFields').style.display =
+    document.getElementById('adMode').value === 'in_stream' ? 'block' : 'none';
+}
+
 async function generateStory(){
   const body={
     topic:document.getElementById('topic').value,
@@ -82,13 +112,55 @@ async function makeBanner(){
   document.getElementById('ad').textContent=JSON.stringify(await r.json(),null,2);
 }
 
+async function generateVideo(){
+  const mode=document.getElementById('adMode').value;
+  const ad={
+    mode:mode,
+    sponsor_name:document.getElementById('sponsor').value,
+    sponsor_text:document.getElementById('sponsorText').value,
+    ad_video_path:mode==='in_stream' ? document.getElementById('adVideo').value : null,
+    insert_at_seconds:mode==='in_stream' ? Number(document.getElementById('insertAt').value) : null
+  };
+
+  if(mode==='corner_banner'){
+    await makeBanner();
+    ad.banner_path='data/ads/generated_banner.png';
+  }
+
+  const body={
+    story:{
+      topic:document.getElementById('topic').value,
+      language:document.getElementById('language').value,
+      target_seconds:Number(document.getElementById('seconds').value),
+      tone:document.getElementById('tone').value
+    },
+    output_video:document.getElementById('output').value,
+    ad:ad
+  };
+
+  document.getElementById('video').textContent='Generating...';
+  const r=await fetch('/api/generate/video-story',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(body)
+  });
+  document.getElementById('video').textContent=JSON.stringify(await r.json(),null,2);
+}
+
 async function loadStatus(){
-  const [h,j]=await Promise.all([fetch('/api/health'),fetch('/api/jobs')]);
+  const [h,j,c]=await Promise.all([
+    fetch('/api/health'),
+    fetch('/api/jobs'),
+    fetch('/api/campaigns')
+  ]);
   document.getElementById('status').textContent=JSON.stringify({
     health:await h.json(),
-    jobs:await j.json()
+    jobs:await j.json(),
+    campaigns:await c.json()
   },null,2);
 }
+
+toggleAdMode();
 loadStatus();
 </script>
 </body>
