@@ -22,6 +22,8 @@ class Settings:
 
     ffmpeg_bin: str = os.getenv("FFMPEG_BIN", "ffmpeg")
 
+    youtube_api_key: str = os.getenv("YOUTUBE_API_KEY", "")
+    youtube_region_code: str = os.getenv("YOUTUBE_REGION_CODE", "US")
     youtube_client_id: str = os.getenv("YOUTUBE_CLIENT_ID", "")
     youtube_client_secret: str = os.getenv("YOUTUBE_CLIENT_SECRET", "")
     youtube_redirect_uri: str = os.getenv("YOUTUBE_REDIRECT_URI", "http://127.0.0.1:8000/api/auth/youtube/callback")
