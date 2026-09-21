@@ -1,0 +1,22 @@
+[
+  {
+    "campaign_id": "demo-banner",
+    "sponsor_name": "Demo Sponsor",
+    "mode": "corner_banner",
+    "weight": 1.0,
+    "sponsor_text": "Learn more",
+    "asset_path": "data/ads/demo-banner.png",
+    "platforms": ["youtube"],
+    "min_story_seconds": 20
+  },
+  {
+    "campaign_id": "demo-drop",
+    "sponsor_name": "Demo Sponsor",
+    "mode": "in_stream",
+    "weight": 1.0,
+    "sponsor_text": "",
+    "asset_path": "data/ads/demo-ad.mp4",
+    "platforms": ["youtube"],
+    "min_story_seconds": 30
+  }
+]
