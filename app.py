@@ -5,15 +5,17 @@ from pathlib import Path
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel, Field
 
 from config import settings
 from models import AdConfig, RenderRequest, StoryRequest
+from services.ad_campaigns import AdCampaignManager, Campaign
 from services.ad_engine import create_corner_banner
 from services.queue import JobQueue
 from services.story_engine import generate_story
 from services.video_renderer import VideoRenderer
 
-app = FastAPI(title=settings.app_name, version="0.1.0")
+app = FastAPI(title=settings.app_name, version="0.2.0")
 
 static_dir = Path("static")
 static_dir.mkdir(exist_ok=True)
@@ -21,6 +23,16 @@ app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
 queue = JobQueue(settings.jobs_db)
 renderer = VideoRenderer()
+campaigns = AdCampaignManager(settings.data_dir / "campaigns.json")
+
+
+class CampaignList(BaseModel):
+    campaigns: list[Campaign]
+
+
+class CampaignSelectRequest(BaseModel):
+    platform: str = "youtube"
+    story_seconds: int = Field(default=45, ge=1, le=600)
 
 
 @app.get("/")
@@ -30,7 +42,7 @@ async def dashboard():
 
 @app.get("/api/health")
 async def health():
-    return {"ok": True, "app": settings.app_name, "version": "0.1.0"}
+    return {"ok": True, "app": settings.app_name, "version": "0.2.0"}
 
 
 @app.get("/api/jobs")
@@ -51,6 +63,28 @@ async def make_banner(ad: AdConfig):
     path = settings.data_dir / "ads" / "generated_banner.png"
     create_corner_banner(ad, str(path))
     return {"path": str(path)}
+
+
+@app.get("/api/campaigns")
+async def list_campaigns():
+    return {"campaigns": [c.__dict__ for c in campaigns.load()]}
+
+
+@app.post("/api/campaigns")
+async def save_campaigns(payload: CampaignList):
+    campaigns.save(payload.campaigns)
+    return {"saved": len(payload.campaigns)}
+
+
+@app.post("/api/campaigns/select")
+async def select_campaign(req: CampaignSelectRequest):
+    campaign = campaigns.choose(req.platform, req.story_seconds)
+    if not campaign:
+        return {"campaign": None}
+    return {
+        "campaign": campaign.__dict__,
+        "ad_config": campaigns.to_ad_config(campaign).model_dump(),
+    }
 
 
 @app.post("/api/render")
