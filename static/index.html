@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AI Story Factory</title>
+<style>
+body{font-family:system-ui,sans-serif;max-width:1100px;margin:40px auto;padding:0 20px;background:#101218;color:#f3f4f6}
+.card{background:#171a22;border:1px solid #292e3b;border-radius:16px;padding:20px;margin-bottom:16px}
+input,textarea,select,button{font:inherit;padding:10px;border-radius:10px;border:1px solid #394052;background:#0d1016;color:#fff}
+input,textarea,select{width:100%;box-sizing:border-box;margin:6px 0 14px}
+button{cursor:pointer}
+pre{white-space:pre-wrap;word-break:break-word}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:800px){.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<h1>AI Story Factory</h1>
+<p>Original AI stories for vertical video, with sponsor banner or in-stream ad support.</p>
+
+<div class="grid">
+<section class="card">
+<h2>Story generator</h2>
+<label>Topic</label>
+<input id="topic" value="a strange event on a train">
+<label>Language</label>
+<input id="language" value="en">
+<label>Length (seconds)</label>
+<input id="seconds" type="number" value="45" min="15" max="180">
+<label>Tone</label>
+<input id="tone" value="mysterious">
+<button onclick="generateStory()">Generate story</button>
+<pre id="story"></pre>
+</section>
+
+<section class="card">
+<h2>Advertisement</h2>
+<p>Modes: corner banner or in-stream sponsor clip.</p>
+<label>Sponsor name</label>
+<input id="sponsor" value="Demo Sponsor">
+<label>Banner text</label>
+<input id="sponsorText" value="Learn more">
+<button onclick="makeBanner()">Create test banner</button>
+<pre id="ad"></pre>
+</section>
+</div>
+
+<section class="card">
+<h2>System status</h2>
+<button onclick="loadStatus()">Refresh</button>
+<pre id="status"></pre>
+</section>
+
+<script>
+async function generateStory(){
+  const body={
+    topic:document.getElementById('topic').value,
+    language:document.getElementById('language').value,
+    target_seconds:Number(document.getElementById('seconds').value),
+    tone:document.getElementById('tone').value
+  };
+  const r=await fetch('/api/generate/story',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(body)
+  });
+  document.getElementById('story').textContent=JSON.stringify(await r.json(),null,2);
+}
+
+async function makeBanner(){
+  const body={
+    mode:'corner_banner',
+    sponsor_name:document.getElementById('sponsor').value,
+    sponsor_text:document.getElementById('sponsorText').value
+  };
+  const r=await fetch('/api/ad/banner',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(body)
+  });
+  document.getElementById('ad').textContent=JSON.stringify(await r.json(),null,2);
+}
+
+async function loadStatus(){
+  const [h,j]=await Promise.all([fetch('/api/health'),fetch('/api/jobs')]);
+  document.getElementById('status').textContent=JSON.stringify({
+    health:await h.json(),
+    jobs:await j.json()
+  },null,2);
+}
+loadStatus();
+</script>
+</body>
+</html>
