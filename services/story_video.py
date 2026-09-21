@@ -14,7 +14,7 @@ from services.video_renderer import VideoRenderer
 
 class StoryVideoBuilder:
     def __init__(self):
-        self.provider = SoraVideoProvider()
+        self.provider = None
         self.renderer = VideoRenderer()
 
     @staticmethod
@@ -57,6 +57,9 @@ class StoryVideoBuilder:
             concat_file.unlink(missing_ok=True)
 
     async def build(self, request: StoryRequest, output_path: str, ad: AdConfig | None = None) -> dict:
+        if self.provider is None:
+            self.provider = SoraVideoProvider()
+
         story = await generate_story(request)
         run_dir = settings.data_dir / "generated" / uuid.uuid4().hex
         run_dir.mkdir(parents=True, exist_ok=True)
